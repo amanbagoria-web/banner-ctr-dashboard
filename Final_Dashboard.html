@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Banner CTR Analytics — Dynamic</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#070a12;--bg2:#0d1120;--bg3:#141926;--bg4:#1b2136;--bg5:#222840;
+  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.11);
+  --text:#e8ecf5;--text2:#8892a4;--text3:#4a5268;
+  --green:#1fd89a;--green-d:rgba(31,216,154,.1);
+  --blue:#4d9fff;--blue-d:rgba(77,159,255,.1);
+  --amber:#f5c342;--amber-d:rgba(245,195,66,.1);
+  --red:#ff5e6b;--red-d:rgba(255,94,107,.1);
+  --purple:#a78bfa;--purple-d:rgba(167,139,250,.1);
+  --orange:#fb8c4b;--orange-d:rgba(251,140,75,.1);
+  --r:10px;--rs:6px;
+  --pos1:#f5c342;--pos2:#4d9fff;--pos3:#1fd89a;--pos4:#a78bfa;--pos5:#fb8c4b;--pos6:#f472b6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.5}
+.mono{font-family:'JetBrains Mono',monospace}
+.main{padding:20px 24px;max-width:1600px;margin:0 auto}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;margin-bottom:16px}
+.card-hd{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.ch-xl{height:340px;position:relative}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+input.tb,select.tb,button.tb{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-family:inherit;font-size:12px;padding:6px 10px;outline:none;transition:.15s}
+input.tb{min-width:140px}
+input.tb:focus,select.tb:focus{border-color:var(--border2)}
+select.tb option{background:var(--bg2)}
+button.tb{cursor:pointer}button.tb:hover{border-color:var(--border2);background:var(--bg4)}
+.th{text-align:left;padding:6px 12px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;vertical-align:bottom}
+.td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap;vertical-align:middle}
+.td-num{text-align:right}
+tbody tr:hover .td{background:var(--bg3)}
+.badge-pos{display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700}
+.vs-up{color:#1fd89a}.vs-dn{color:#ff5e6b}.vs-eq{color:#8892a4}
+.sort-btn{cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:4px;width:100%}
+.sort-btn:hover{color:var(--text)}
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--r);padding:32px;text-align:center;cursor:pointer;transition:.2s;background:var(--bg3)}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--purple);background:var(--purple-d)}
+.upload-zone input{display:none}
+.status-bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:8px 0;margin-bottom:4px}
+.status-pill{padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.kpi-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);padding:14px 16px}
+.kpi-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.kpi-value{font-size:22px;font-weight:700;color:var(--text);font-family:'JetBrains Mono',monospace}
+.kpi-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.tab-btn{padding:7px 18px;font-size:12px;font-weight:600;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-1px;transition:.15s}
+.tab-btn.active{border-bottom-color:var(--purple);color:var(--purple)}
+.heatmap-cell{font-size:11px;font-weight:600;text-align:center;border-radius:4px;padding:5px 4px;min-width:54px}
+#loading-overlay{position:fixed;inset:0;background:rgba(7,10,18,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:12px}
+#loading-overlay.hidden{display:none}
+.spinner{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay" class="hidden">
+  <div class="spinner"></div>
+  <div style="color:var(--text2);font-size:13px">Processing CSV data…</div>
+</div>
+
+<div class="main">
+
+  <!-- ── Upload Section ── -->
+  <div class="card" id="upload-card">
+
+    <!-- Header row -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em">📂 Data Sources</div>
+      <span class="tag" style="background:var(--purple-d);color:var(--purple)" id="upload-status-tag">No data loaded</span>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button class="tb" id="guide-toggle-btn" onclick="toggleGuide()" style="font-size:11px;padding:4px 12px">📋 Export Guide</button>
+        <button class="tb" id="upload-collapse-btn" onclick="toggleUploadPanel()" style="font-size:11px;padding:4px 12px;display:none">▲ Collapse</button>
+      </div>
+    </div>
+
+    <!-- Loaded summary bar (shown after data loaded) -->
+    <div id="loaded-summary" style="display:none;margin-bottom:14px;padding:10px 14px;background:var(--bg4);border-radius:var(--rs);display:none;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">📋</span>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text)" id="loaded-events-name">—</div>
+          <div style="font-size:10px;color:var(--text3)">Monetate export</div>
+        </div>
+      </div>
+      <div style="width:1px;height:28px;background:var(--border)"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">📈</span>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text)" id="loaded-sessions-name">—</div>
+          <div style="font-size:10px;color:var(--text3)">Shopify export</div>
+        </div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="tb" onclick="document.getElementById('upload-panel').style.display='';document.getElementById('upload-collapse-btn').style.display=''" style="font-size:11px;padding:4px 12px;color:var(--amber);border-color:var(--amber)">↺ Update Files</button>
+      </div>
+    </div>
+
+    <!-- Main upload panel -->
+    <div id="upload-panel">
+
+      <!-- Step-by-step export guide (collapsible) -->
+      <div id="export-guide" style="display:none;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+          <!-- Monetate steps -->
+          <div style="background:var(--bg4);border-radius:var(--rs);padding:14px;border:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+              <span style="background:var(--amber-d);padding:2px 8px;border-radius:8px">STEP 1</span> Monetate → Banner Clicks CSV
+            </div>
+            <ol style="padding-left:16px;color:var(--text2);font-size:11px;line-height:2">
+              <li>Open <strong style="color:var(--text)">Monetate</strong> → Analytics → Events</li>
+              <li>Filter event: <code style="background:var(--bg3);padding:1px 5px;border-radius:3px;color:var(--purple)">homepage_banner_click</code></li>
+              <li>Set date range to your desired period</li>
+              <li>Click <strong style="color:var(--text)">Export → Analysis events table</strong></li>
+              <li>Save the file and upload it below ↓</li>
+            </ol>
+            <div style="margin-top:8px;padding:6px 10px;background:var(--bg3);border-radius:4px;font-size:10px;color:var(--text3)">
+              💡 File will be named like <code style="color:var(--text2)">Analysis_events_table_*.csv</code>
+            </div>
+          </div>
+
+          <!-- Shopify steps -->
+          <div style="background:var(--bg4);border-radius:var(--rs);padding:14px;border:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+              <span style="background:var(--blue-d);padding:2px 8px;border-radius:8px">STEP 2</span> Shopify → Sessions CSV
+            </div>
+            <ol style="padding-left:16px;color:var(--text2);font-size:11px;line-height:2">
+              <li>Open <strong style="color:var(--text)">Shopify Admin</strong> → Analytics → Reports</li>
+              <li>Find report: <strong style="color:var(--text)">Sessions by landing page</strong></li>
+              <li>Set the <strong style="color:var(--text)">same date range</strong> as Monetate</li>
+              <li>Click <strong style="color:var(--text)">Export → Export CSV</strong></li>
+              <li>Save the file and upload it below ↓</li>
+            </ol>
+            <div style="margin-top:8px;padding:6px 10px;background:var(--bg3);border-radius:4px;font-size:10px;color:var(--text3)">
+              💡 File will be named like <code style="color:var(--text2)">Sessions_by_landing_page_*.csv</code>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Drop zones -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <!-- Events CSV -->
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:6px">
+            <span style="background:var(--amber-d);color:var(--amber);padding:1px 7px;border-radius:8px;font-size:10px">STEP 1</span>
+            Monetate — Banner Events CSV
+          </div>
+          <div class="upload-zone" id="events-drop" onclick="document.getElementById('events-file').click()">
+            <input type="file" id="events-file" accept=".csv" onchange="handleFileUpload('events',this.files[0])">
+            <div style="font-size:28px;margin-bottom:8px">📋</div>
+            <div style="color:var(--text);font-weight:600;margin-bottom:4px" id="events-filename">Click or drop Monetate CSV</div>
+            <div style="color:var(--text3);font-size:11px">Analysis_events_table format</div>
+          </div>
+          <div id="events-status" class="status-pill" style="display:none;margin-top:8px"></div>
+        </div>
+
+        <!-- Sessions CSV -->
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:6px">
+            <span style="background:var(--blue-d);color:var(--blue);padding:1px 7px;border-radius:8px;font-size:10px">STEP 2</span>
+            Shopify — Sessions by Landing Page CSV
+          </div>
+          <div class="upload-zone" id="sessions-drop" onclick="document.getElementById('sessions-file').click()">
+            <input type="file" id="sessions-file" accept=".csv" onchange="handleFileUpload('sessions',this.files[0])">
+            <div style="font-size:28px;margin-bottom:8px">📈</div>
+            <div style="color:var(--text);font-weight:600;margin-bottom:4px" id="sessions-filename">Click or drop Shopify CSV</div>
+            <div style="color:var(--text3);font-size:11px">Sessions_by_landing_page format</div>
+          </div>
+          <div id="sessions-status" class="status-pill" style="display:none;margin-top:8px"></div>
+        </div>
+
+      </div>
+
+      <!-- Both loaded indicator -->
+      <div id="both-ready" style="display:none;margin-top:12px;padding:10px 14px;background:var(--green-d);border-radius:var(--rs);font-size:11px;color:var(--green);font-weight:600;text-align:center">
+        ✓ Both files loaded — building dashboard…
+      </div>
+
+      <!-- Tip -->
+      <div id="upload-tip" style="margin-top:12px;padding:10px 14px;background:var(--bg4);border-radius:var(--rs);font-size:11px;color:var(--text3)">
+        💡 <strong style="color:var(--text2)">Tip:</strong> Make sure both exports cover the <strong style="color:var(--text2)">exact same date range</strong>. The dashboard auto-remembers your last session — just re-upload when you export a new week.
+      </div>
+
+    </div><!-- /upload-panel -->
+  </div>
+
+  <!-- ── Dashboard (hidden until data loaded) ── -->
+  <div id="dashboard" style="display:none">
+
+    <!-- KPI Row -->
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <!-- Main Chart Card -->
+    <div class="card">
+      <div class="card-hd">Banner CTR Trend — All URLs with Position &amp; Date Filters
+        <span class="tag" style="background:var(--purple-d);color:var(--purple)" id="tr-url-count"></span>
+        <span class="tag" style="background:var(--blue-d);color:var(--blue)" id="tr-date-range"></span>
+        <button class="tb" onclick="exportTableCSV()" style="margin-left:auto;font-size:11px;padding:4px 10px">⬇ Export Table</button>
+      </div>
+      <div class="toolbar">
+        <select class="tb" id="tr-banner-sel" onchange="renderBannerTrend()" style="min-width:280px"></select>
+        <select class="tb" id="tr-pos-sel" onchange="renderBannerTrend()">
+          <option value="">All positions</option>
+        </select>
+        <input class="tb" type="date" id="tr-date-from" onchange="renderBannerTrend()">
+        <input class="tb" type="date" id="tr-date-to" onchange="renderBannerTrend()">
+        <button class="tb" onclick="clearTrendFilters()">Clear filters</button>
+      </div>
+      <!-- Tabs -->
+      <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--border)">
+        <button class="tab-btn active" id="tab-chart-btn" onclick="switchTab('chart')">📈 Trend Chart</button>
+        <button class="tab-btn" id="tab-table-btn" onclick="switchTab('table')">📊 Data Tables</button>
+        <button class="tab-btn" id="tab-pos-btn" onclick="switchTab('pos')">🗺 Position Analysis</button>
+      </div>
+
+      <!-- Chart Panel -->
+      <div id="panel-chart">
+        <div id="tr-pos-info" style="margin-bottom:8px;font-size:11px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap"></div>
+        <div class="ch-xl"><canvas id="ch-banner-trend"></canvas></div>
+        <div id="daily-table-wrap" style="margin-top:20px;display:none">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+            Daily Data
+            <span class="tag" style="background:var(--purple-d);color:var(--purple)" id="daily-table-badge"></span>
+            <span style="color:var(--text3);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;margin-left:auto" id="daily-table-subtitle"></span>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">
+              <colgroup><col style="width:160px"><col style="width:100px"><col style="width:180px"><col style="width:120px"><col style="width:120px"></colgroup>
+              <thead><tr style="border-bottom:1px solid var(--border2)" id="daily-table-head"></tr></thead>
+              <tbody id="daily-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table Panel -->
+      <div id="panel-table" style="display:none">
+        <div style="margin-bottom:20px">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+            <span id="tbl1-title">Select a banner to see position breakdown</span>
+            <span class="tag" style="background:var(--purple-d);color:var(--purple)" id="tbl1-badge"></span>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">
+              <colgroup><col style="width:90px"><col style="width:150px"><col style="width:150px"><col style="width:110px"><col style="width:100px"><col style="width:100px"><col style="width:150px"></colgroup>
+              <thead>
+                <tr style="border-bottom:1px solid var(--border2)">
+                  <th class="th">Position</th><th class="th">Banner Avg CTR</th><th class="th">vs Platform Avg</th>
+                  <th class="th">Total Clicks</th><th class="th">Days Active</th><th class="th">Clicks/Day</th><th class="th">Share of Clicks</th>
+                </tr>
+              </thead>
+              <tbody id="tbl-banner-pos-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+            All Banners Summary
+            <span class="tag" style="background:var(--blue-d);color:var(--blue)" id="tbl2-badge"></span>
+            <input type="text" class="tb" id="tbl2-search" placeholder="Search banners…" oninput="renderAllBannersTable()" style="min-width:180px;margin-left:auto;font-size:11px;padding:4px 8px">
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">
+              <colgroup>
+                <col style="width:220px">
+                <col style="width:90px">
+                <col style="width:90px">
+                <col style="width:100px">
+                <col style="width:90px">
+                <col style="width:90px">
+                <col style="width:80px">
+                <col style="width:100px">
+                <col style="width:120px">
+              </colgroup>
+              <thead><tr style="border-bottom:1px solid var(--border2)" id="tbl2-head"></tr></thead>
+              <tbody id="tbl-all-banners-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Position Analysis Panel -->
+      <div id="panel-pos" style="display:none">
+        <div class="card-hd" style="margin-bottom:12px">Position-wise Performance Heatmap
+          <span class="tag" style="background:var(--amber-d);color:var(--amber)" id="heatmap-badge"></span>
+        </div>
+        <div style="overflow-x:auto;margin-bottom:24px">
+          <table style="width:100%;border-collapse:separate;border-spacing:4px;font-size:12px" id="heatmap-table"></table>
+        </div>
+        <div class="card-hd" style="margin-bottom:12px">Platform Position Summary</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">
+            <colgroup><col style="width:90px"><col style="width:120px"><col style="width:180px"><col style="width:110px"><col style="width:110px"><col style="width:130px"><col style="width:130px"></colgroup>
+            <thead><tr style="border-bottom:1px solid var(--border2)">
+              <th class="th">Position</th><th class="th">Total Clicks</th><th class="th">Share</th>
+              <th class="th">Avg CTR</th><th class="th">Peak CTR</th><th class="th">Active Banners</th><th class="th">Avg Clicks/Day</th>
+            </tr></thead>
+            <tbody id="pos-summary-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dashboard -->
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+//  CONSTANTS & HELPERS
+// ══════════════════════════════════════════════════════════════════
+const POS_COL = ['#f5c342','#4d9fff','#1fd89a','#a78bfa','#fb8c4b','#f472b6'];
+const POS_BG  = ['rgba(245,195,66,.15)','rgba(77,159,255,.15)','rgba(31,216,154,.15)',
+                 'rgba(167,139,250,.15)','rgba(251,140,75,.15)','rgba(244,114,182,.15)'];
+
+function ctrCol(v){ return v>=5?'#1fd89a':v>=3?'#4d9fff':v>=1?'#f5c342':'#ff5e6b'; }
+function fmt(n){ return Math.round(n).toLocaleString('en-IN'); }
+function fmtK(n){ return n>=1000?(n/1000).toFixed(1)+'K':Math.round(n).toString(); }
+function capitalize(s){ return s.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()); }
+function slugFromUrl(url){
+  return url.replace(/https?:\/\/[^/]+/,'').replace(/\/+(products|collections|a\/h)\//,'/').replace(/^\//,'').replace(/\/.*$/,'');
+}
+
+Chart.defaults.color = '#4a5268';
+Chart.defaults.borderColor = 'rgba(255,255,255,.05)';
+Chart.defaults.font.family = "'Inter', sans-serif";
+
+// ══════════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════════
+let D = null; // computed data model
+let rawEvents  = null;
+let rawSessions = null;
+
+// ══════════════════════════════════════════════════════════════════
+//  DRAG & DROP
+// ══════════════════════════════════════════════════════════════════
+['events-drop','sessions-drop'].forEach(id=>{
+  const el = document.getElementById(id);
+  el.addEventListener('dragover', e=>{ e.preventDefault(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', ()=> el.classList.remove('drag-over'));
+  el.addEventListener('drop', e=>{
+    e.preventDefault(); el.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if(!file) return;
+    const type = id==='events-drop'?'events':'sessions';
+    handleFileUpload(type, file);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  LOCALSTORAGE PERSISTENCE
+// ══════════════════════════════════════════════════════════════════
+const LS_EVENTS   = 'ctr_dash_events_csv';
+const LS_SESSIONS = 'ctr_dash_sessions_csv';
+const LS_ENAME    = 'ctr_dash_events_name';
+const LS_SNAME    = 'ctr_dash_sessions_name';
+
+function saveToStorage(type, text, name){
+  try {
+    if(type==='events'){ localStorage.setItem(LS_EVENTS,text); localStorage.setItem(LS_ENAME,name); }
+    else               { localStorage.setItem(LS_SESSIONS,text); localStorage.setItem(LS_SNAME,name); }
+  } catch(e){ /* storage full — silent fail */ }
+}
+
+function loadFromStorage(){
+  try {
+    const ev = localStorage.getItem(LS_EVENTS);
+    const se = localStorage.getItem(LS_SESSIONS);
+    const en = localStorage.getItem(LS_ENAME) || 'Previous Monetate export';
+    const sn = localStorage.getItem(LS_SNAME) || 'Previous Shopify export';
+    if(ev && se){
+      rawEvents = ev; rawSessions = se;
+      markFileLoaded('events', en, true);
+      markFileLoaded('sessions', sn, true);
+      setUploadStatusTag('↺ Loaded from last session','var(--amber-d)','var(--amber)');
+      rebuildDashboard();
+      return true;
+    }
+  } catch(e){}
+  return false;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  UPLOAD UI HELPERS
+// ══════════════════════════════════════════════════════════════════
+function toggleGuide(){
+  const g = document.getElementById('export-guide');
+  const btn = document.getElementById('guide-toggle-btn');
+  const open = g.style.display==='';
+  g.style.display = open ? 'none' : '';
+  btn.textContent = open ? '📋 Export Guide' : '✕ Hide Guide';
+}
+
+function toggleUploadPanel(){
+  const p = document.getElementById('upload-panel');
+  const btn = document.getElementById('upload-collapse-btn');
+  const open = p.style.display!=='none';
+  p.style.display = open ? 'none' : '';
+  btn.textContent = open ? '▼ Show' : '▲ Collapse';
+}
+
+function setUploadStatusTag(msg, bg, col){
+  const t = document.getElementById('upload-status-tag');
+  t.textContent = msg; t.style.background = bg; t.style.color = col;
+}
+
+function markFileLoaded(type, name, fromCache){
+  const suffix = fromCache ? ' (cached)' : '';
+  if(type==='events'){
+    document.getElementById('events-filename').textContent = name;
+    document.getElementById('loaded-events-name').textContent = name;
+    setStatus('events-status', '✓ '+name+suffix, 'var(--green-d)', 'var(--green)');
+  } else {
+    document.getElementById('sessions-filename').textContent = name;
+    document.getElementById('loaded-sessions-name').textContent = name;
+    setStatus('sessions-status', '✓ '+name+suffix, 'var(--green-d)', 'var(--green)');
+  }
+}
+
+function showLoadedSummary(){
+  const s = document.getElementById('loaded-summary');
+  s.style.display = 'flex';
+  document.getElementById('upload-panel').style.display = 'none';
+  document.getElementById('upload-collapse-btn').style.display = '';
+  document.getElementById('upload-tip').style.display = 'none';
+  setUploadStatusTag('✓ Data loaded','var(--green-d)','var(--green)');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  FILE UPLOAD HANDLER
+// ══════════════════════════════════════════════════════════════════
+function handleFileUpload(type, file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    const text = e.target.result;
+    saveToStorage(type, text, file.name);
+    if(type==='events'){
+      rawEvents = text;
+      markFileLoaded('events', file.name, false);
+    } else {
+      rawSessions = text;
+      markFileLoaded('sessions', file.name, false);
+    }
+    if(rawEvents && rawSessions){
+      document.getElementById('both-ready').style.display='';
+      rebuildDashboard();
+    }
+  };
+  reader.readAsText(file);
+}
+
+function setStatus(elId, msg, bg, col){
+  const el = document.getElementById(elId);
+  el.style.display='inline-block';
+  el.style.background=bg; el.style.color=col;
+  el.textContent=msg;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CSV PARSER  (handles quoted fields, CRLF)
+// ══════════════════════════════════════════════════════════════════
+function parseCSV(text){
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim());
+  return lines.map(line=>{
+    const cols=[]; let cur='', inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){inQ=!inQ;}
+      else if(ch===','&&!inQ){cols.push(cur.trim());cur='';}
+      else cur+=ch;
+    }
+    cols.push(cur.trim());
+    return cols;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DATE PARSER  — handles "01-May-26", "2026-05-01", ISO dates
+// ══════════════════════════════════════════════════════════════════
+const MON_MAP = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
+                 jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+function normalizeDate(raw){
+  raw = raw.trim();
+  if(!raw) return null;
+  // ISO already: 2025-11-01
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  // DD-Mon-YY: 01-May-26
+  const m1 = raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
+  if(m1){
+    const [,dd,mon,yy] = m1;
+    const year = yy.length===2 ? (parseInt(yy)<50?'20':'19')+yy : yy;
+    const mm = MON_MAP[mon.toLowerCase()];
+    if(!mm) return null;
+    return `${year}-${mm}-${dd.padStart(2,'0')}`;
+  }
+  return null;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PARSE EVENTS CSV
+//  Columns: event, url, position, average, date1, date2, ...
+// ══════════════════════════════════════════════════════════════════
+function parseEvents(text){
+  const rows = parseCSV(text);
+  if(rows.length < 2) return [];
+  const header = rows[0];
+  // Date columns start at index 4
+  const dateCols = header.slice(4).map(h=>normalizeDate(h)).filter(Boolean);
+  const records = [];
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    if(!r[0]) continue;
+    const event = r[0].trim();
+    if(!event.toLowerCase().includes('banner')) continue;
+    const url = (r[1]||'').trim();
+    if(!url) continue;
+    const position = parseInt(r[2]);
+    if(isNaN(position)||position<1||position>6) continue;
+    const slug = slugFromUrl(url);
+    const daily = {};
+    for(let j=0;j<dateCols.length;j++){
+      const val = parseFloat((r[4+j]||'0').replace(/,/g,''));
+      if(!isNaN(val)) daily[dateCols[j]] = (daily[dateCols[j]]||0)+val;
+    }
+    records.push({ slug, url, position, daily });
+  }
+  return records;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PARSE SESSIONS CSV
+//  Columns: landing page type, landing page path, day, online store visitors, sessions, ...
+// ══════════════════════════════════════════════════════════════════
+function parseSessions(text){
+  const rows = parseCSV(text);
+  if(rows.length < 2) return {};
+  // Build { date: sessions } for Homepage rows
+  const sessionsByDate = {};
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    const type = (r[0]||'').replace(/"/g,'').trim().toLowerCase();
+    if(!type.includes('homepage')) continue;
+    const day = normalizeDate((r[2]||'').replace(/"/g,'').trim());
+    if(!day) continue;
+    const sessions = parseInt((r[4]||'0').replace(/,/g,'').replace(/"/g,''));
+    if(!isNaN(sessions)) sessionsByDate[day] = (sessionsByDate[day]||0)+sessions;
+  }
+  return sessionsByDate;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  BUILD DATA MODEL  D  from raw parsed data
+//  This mirrors the structure the original dashboard expected
+// ══════════════════════════════════════════════════════════════════
+function buildDataModel(eventRecords, sessionsByDate){
+
+  // ── 0. PRE-PROCESS: detect position shifts (same banner, same day, multiple positions) ──
+  // For each slug+date, collect all positions with their clicks.
+  // If multiple positions have clicks on the same day → shift occurred.
+  // Strategy: combine all clicks onto the DOMINANT position (most clicks that day).
+  // Record the shift annotation for display.
+  const slugSet = new Set();
+  eventRecords.forEach(r=>slugSet.add(r.slug));
+
+  // raw: { slug: { date: { position: clicks } } }
+  const raw = {};
+  eventRecords.forEach(rec=>{
+    if(!raw[rec.slug]) raw[rec.slug]={};
+    Object.entries(rec.daily).forEach(([date,clicks])=>{
+      if(clicks<10) return; // ignore stray sub-10 clicks — treat as zero
+      if(!raw[rec.slug][date]) raw[rec.slug][date]={};
+      raw[rec.slug][date][rec.position] = (raw[rec.slug][date][rec.position]||0)+clicks;
+    });
+  });
+
+  // positionShifts: { slug: { date: { from:[pos,...], to:dominantPos, totalClicks } } }
+  const positionShifts = {};
+  // Build cleaned records: same structure as eventRecords but shifts merged onto dominant pos
+  const cleanedRecords = [];
+  slugSet.forEach(slug=>{
+    const dateMap = raw[slug]||{};
+    // Track which (slug,pos) → daily clicks after merging
+    const mergedDaily = {}; // { position: { date: clicks } }
+
+    Object.entries(dateMap).forEach(([date, posClicks])=>{
+      const entries = Object.entries(posClicks).map(([p,c])=>({pos:parseInt(p),clicks:c}));
+      if(entries.length===1){
+        // No shift — just record normally
+        const {pos,clicks} = entries[0];
+        if(!mergedDaily[pos]) mergedDaily[pos]={};
+        mergedDaily[pos][date] = (mergedDaily[pos][date]||0)+clicks;
+      } else {
+        // Shift day — find dominant position (most clicks)
+        entries.sort((a,b)=>b.clicks-a.clicks);
+        const dominantPos = entries[0].pos;
+        const totalClicks = entries.reduce((s,e)=>s+e.clicks,0);
+        const fromPositions = entries.slice(1).map(e=>e.pos).sort((a,b)=>a-b);
+        // Record shift annotation
+        if(!positionShifts[slug]) positionShifts[slug]={};
+        positionShifts[slug][date] = { from:fromPositions, to:dominantPos, totalClicks, breakdown:entries };
+        // Merge all clicks to dominant position
+        if(!mergedDaily[dominantPos]) mergedDaily[dominantPos]={};
+        mergedDaily[dominantPos][date] = totalClicks;
+      }
+    });
+
+    // Convert mergedDaily into cleaned records
+    Object.entries(mergedDaily).forEach(([pos,days])=>{
+      // Find a matching original record for url lookup
+      const origRec = eventRecords.find(r=>r.slug===slug&&r.position===parseInt(pos));
+      const url = origRec?origRec.url:slug;
+      cleanedRecords.push({ slug, url, position:parseInt(pos), daily:days });
+    });
+  });
+
+  // ── 1. Per-banner-position: aggregate clicks from cleaned records ──
+  const bpMap = {};
+  cleanedRecords.forEach(rec=>{
+    const key = `${rec.slug}||${rec.position}`;
+    if(!bpMap[key]) bpMap[key] = { slug:rec.slug, url:rec.url, position:rec.position, days:{}, totalClicks:0 };
+    Object.entries(rec.daily).forEach(([date,clicks])=>{
+      bpMap[key].days[date] = (bpMap[key].days[date]||0)+clicks;
+      bpMap[key].totalClicks += clicks;
+    });
+  });
+
+  // ── 2. Build daily CTR per banner-position using sessions ────────
+  const banner_trends = {};
+  const banner_position = [];
+  const bannerDailyPos = {};
+
+  Object.values(bpMap).forEach(bp=>{
+    const { slug, position, days } = bp;
+    // Only days with >=10 clicks are treated as real — sub-10 days are treated same as 0
+    const activeDates = Object.keys(days).filter(d=>days[d]>=10).sort();
+    if(!activeDates.length) return;
+
+    // Use only qualified clicks so numerator/denominator of CTR both exclude sub-10 days
+    let totalSessForPos = 0;
+    let qualifiedClicks = 0;
+    activeDates.forEach(d=>{
+      qualifiedClicks += days[d];
+      const sess = sessionsByDate[d]||0;
+      if(sess>0) totalSessForPos += sess;
+    });
+    const avg_ctr = totalSessForPos>0 ? (qualifiedClicks/totalSessForPos)*100 : 0;
+
+    banner_position.push({
+      banner: slug,
+      position,
+      avg_ctr: parseFloat(avg_ctr.toFixed(3)),
+      total_clicks: qualifiedClicks,
+      days: activeDates.length
+    });
+
+    if(!bannerDailyPos[slug]) bannerDailyPos[slug]={};
+    activeDates.forEach(d=>{ bannerDailyPos[slug][d] = position; });
+  });
+
+  // ── 3. Build banner_trends (daily CTR per banner, all positions combined) ──
+  // Only accumulate days with >=10 clicks — sub-10 days treated same as 0
+  const bannerDailyClicks = {};
+  Object.values(bpMap).forEach(bp=>{
+    if(!bannerDailyClicks[bp.slug]) bannerDailyClicks[bp.slug]={};
+    Object.entries(bp.days).forEach(([date,clicks])=>{
+      if(clicks>=10)
+        bannerDailyClicks[bp.slug][date] = (bannerDailyClicks[bp.slug][date]||0)+clicks;
+    });
+  });
+  slugSet.forEach(slug=>{
+    const dcl = bannerDailyClicks[slug]||{};
+    banner_trends[slug]={};
+    Object.entries(dcl).forEach(([date,clicks])=>{
+      const sess = sessionsByDate[date]||0;
+      if(sess>0) banner_trends[slug][date] = parseFloat(((clicks/sess)*100).toFixed(3));
+    });
+  });
+
+  // ── 4. Banner summary ────────────────────────────────────────────
+  const banner_summary = [];
+  slugSet.forEach(slug=>{
+    const bpRows = banner_position.filter(r=>r.banner===slug);
+    if(!bpRows.length) return;
+    const totalClicks = bpRows.reduce((s,r)=>s+r.total_clicks,0);
+    const activeDaysSet = new Set();
+    Object.values(bpMap).filter(bp=>bp.slug===slug).forEach(bp=>{
+      Object.keys(bp.days).forEach(d=>{ if(bp.days[d]>=10) activeDaysSet.add(d); });
+    });
+    const activeDays = activeDaysSet.size;
+
+    const trendData = banner_trends[slug]||{};
+    const trendDates = Object.keys(trendData);
+    // avg CTR = total clicks / total sessions across all active days (weighted)
+    // Never average CTR values directly — that gives equal weight to 1-click and 400-click days
+    // FIX: avg CTR uses clicks/sessions on days with clicks > 0 only
+    const dcl = bannerDailyClicks[slug]||{};
+    let sumClicks=0, sumSess=0;
+    Object.entries(dcl).forEach(([d,c])=>{
+      // bannerDailyClicks already excludes sub-10 days, so c>=10 always here
+      const s = sessionsByDate[d]||0;
+      if(s>0){ sumClicks+=c; sumSess+=s; }
+    });
+    const avg_ctr = sumSess>0 ? (sumClicks/sumSess)*100 : 0;
+    const allDailyCTRs = trendDates.map(d=>trendData[d]).filter(v=>v>0);
+    const peak_ctr = allDailyCTRs.length ? Math.max(...allDailyCTRs) : 0;
+    const min_ctr  = allDailyCTRs.length ? Math.min(...allDailyCTRs) : 0;
+
+    const positions = [...new Set(bpRows.map(r=>r.position))].sort((a,b)=>a-b);
+    const bestPosRow = bpRows.reduce((best,r)=>r.avg_ctr>best.avg_ctr?r:best, bpRows[0]);
+    const worstPosRow = bpRows.reduce((worst,r)=>r.avg_ctr<worst.avg_ctr?r:worst, bpRows[0]);
+
+    banner_summary.push({
+      banner: slug,
+      total_clicks: totalClicks,
+      active_days: activeDays,
+      avg_clicks_day: activeDays>0 ? totalClicks/activeDays : 0,
+      avg_ctr: parseFloat(avg_ctr.toFixed(3)),
+      peak_ctr: parseFloat(peak_ctr.toFixed(3)),
+      min_ctr: parseFloat(min_ctr.toFixed(3)),
+      positions,
+      best_pos: bestPosRow.position,
+      worst_pos: worstPosRow.position
+    });
+  });
+  banner_summary.sort((a,b)=>b.total_clicks-a.total_clicks);
+
+  // ── 5. Position summary ──────────────────────────────────────────
+  const posMap = {};
+  banner_position.forEach(bp=>{
+    if(!posMap[bp.position]) posMap[bp.position]={position:bp.position,total_clicks:0,total_sessions:0,peak_ctrs:[],active_days_set:new Set(),banners:new Set()};
+    posMap[bp.position].total_clicks += bp.total_clicks;
+    posMap[bp.position].banners.add(bp.banner);
+    // Accumulate sessions and peak CTR from raw days for this banner×position
+    const bp2 = Object.values(bpMap).find(b=>b.slug===bp.banner&&b.position===bp.position);
+    if(bp2){
+      Object.keys(bp2.days).forEach(d=>{
+        if(bp2.days[d]>=10){
+          posMap[bp.position].active_days_set.add(d);
+          const s = sessionsByDate[d]||0;
+          if(s>0) posMap[bp.position].total_sessions += s;
+        }
+      });
+    }
+    posMap[bp.position].peak_ctrs.push(bp.avg_ctr);
+  });
+  const totalClicksAll = Object.values(posMap).reduce((s,p)=>s+p.total_clicks,0);
+  const position_summary = Object.values(posMap).map(p=>{
+    // Weighted CTR: total clicks at this position / total sessions on days this position was active
+    const avg_ctr = p.total_sessions>0 ? (p.total_clicks/p.total_sessions)*100 : 0;
+    const peak_ctr = p.peak_ctrs.length ? Math.max(...p.peak_ctrs) : 0;
+    return {
+      position: p.position,
+      total_clicks: p.total_clicks,
+      total_sessions: p.total_sessions,
+      share_pct: totalClicksAll>0 ? parseFloat(((p.total_clicks/totalClicksAll)*100).toFixed(2)):0,
+      avg_ctr: parseFloat(avg_ctr.toFixed(3)),
+      peak_ctr: parseFloat(peak_ctr.toFixed(3)),
+      avg_clicks: parseFloat((p.total_clicks/(p.active_days_set.size||1)).toFixed(1)),
+      active_days: p.active_days_set.size,
+      banner_count: p.banners.size
+    };
+  }).sort((a,b)=>a.position-b.position);
+
+  // ── 6. Daily aggregate ───────────────────────────────────────────
+  const dailyMap = {};
+  Object.values(bannerDailyClicks).forEach(dcl=>{
+    Object.entries(dcl).forEach(([date,clicks])=>{
+      if(!dailyMap[date]) dailyMap[date]={date, total_clicks:0, active_banners:new Set()};
+      dailyMap[date].total_clicks += clicks;
+    });
+  });
+  Object.values(bpMap).forEach(bp=>{
+    Object.entries(bp.days).forEach(([date,clicks])=>{
+      if(clicks>=10 && dailyMap[date]) dailyMap[date].active_banners.add(bp.slug);
+    });
+  });
+  const daily = Object.values(dailyMap).map(d=>({
+    date: d.date,
+    total_clicks: d.total_clicks,
+    sessions: sessionsByDate[d.date]||0,
+    ctr: sessionsByDate[d.date]>0 ? parseFloat(((d.total_clicks/sessionsByDate[d.date])*100).toFixed(3)):0,
+    active_banners: d.active_banners.size
+  })).sort((a,b)=>a.date.localeCompare(b.date));
+
+  // ── 7. Position heatmap by month ─────────────────────────────────
+  const monthSet = new Set();
+  daily.forEach(d=>monthSet.add(d.date.slice(0,7)));
+  const months = [...monthSet].sort();
+  const pos_heatmap = {};
+  banner_position.forEach(bp=>{
+    const bp2 = Object.values(bpMap).find(b=>b.slug===bp.banner&&b.position===bp.position);
+    if(!bp2) return;
+    const p = String(bp.position);
+    if(!pos_heatmap[p]) pos_heatmap[p]={};
+    months.forEach(mon=>{
+      const daysInMon = Object.keys(bp2.days).filter(d=>d.startsWith(mon)&&bp2.days[d]>=10);
+      if(!daysInMon.length) return;
+      const ctrsInMon = daysInMon.map(d=>{
+        const sess = sessionsByDate[d]||0;
+        return sess>0 ? (bp2.days[d]/sess)*100 : 0;
+      }).filter(v=>v>0);
+      if(ctrsInMon.length){
+        const avg = ctrsInMon.reduce((a,b)=>a+b,0)/ctrsInMon.length;
+        pos_heatmap[p][mon] = parseFloat(((pos_heatmap[p][mon]||0)*0 + avg).toFixed(3));
+      }
+    });
+  });
+  // Average across banners per position per month
+  const posMonthCount = {};
+  banner_position.forEach(bp=>{
+    const bp2 = Object.values(bpMap).find(b=>b.slug===bp.banner&&b.position===bp.position);
+    if(!bp2) return;
+    const p = String(bp.position);
+    months.forEach(mon=>{
+      const daysInMon = Object.keys(bp2.days).filter(d=>d.startsWith(mon)&&bp2.days[d]>=10);
+      if(!daysInMon.length) return;
+      const ctrsInMon = daysInMon.map(d=>{
+        const sess = sessionsByDate[d]||0;
+        return sess>0?(bp2.days[d]/sess)*100:0;
+      }).filter(v=>v>0);
+      if(!ctrsInMon.length) return;
+      const avg = ctrsInMon.reduce((a,b)=>a+b,0)/ctrsInMon.length;
+      if(!posMonthCount[p+mon]) posMonthCount[p+mon]={sum:0,n:0};
+      posMonthCount[p+mon].sum += avg;
+      posMonthCount[p+mon].n++;
+    });
+  });
+  Object.keys(pos_heatmap).forEach(p=>{
+    months.forEach(mon=>{
+      const key = p+mon;
+      if(posMonthCount[key] && posMonthCount[key].n>0){
+        pos_heatmap[p][mon] = parseFloat((posMonthCount[key].sum/posMonthCount[key].n).toFixed(3));
+      }
+    });
+  });
+
+  // ── 8. Fatigue analysis ──────────────────────────────────────────
+  const fatigue = banner_summary.map(b=>{
+    const trendData = banner_trends[b.banner]||{};
+    const sortedDates = Object.keys(trendData).sort();
+    const n = sortedDates.length;
+    if(n<6) return null;
+    const half = Math.floor(n/2);
+    const early = sortedDates.slice(0,half).map(d=>trendData[d]);
+    const late  = sortedDates.slice(-half).map(d=>trendData[d]);
+    const earlyAvg = early.reduce((a,b)=>a+b,0)/early.length;
+    const lateAvg  = late.reduce((a,b)=>a+b,0)/late.length;
+    const trendPct = earlyAvg>0 ? ((lateAvg-earlyAvg)/earlyAvg)*100 : 0;
+    return {
+      banner: b.banner,
+      days: n,
+      early_ctr: parseFloat(earlyAvg.toFixed(3)),
+      late_ctr: parseFloat(lateAvg.toFixed(3)),
+      trend_pct: parseFloat(trendPct.toFixed(1)),
+      fatigued: trendPct < -30
+    };
+  }).filter(Boolean);
+
+  // ── 9. Session lookup ─────────────────────────────────────────────
+  const sessions = Object.entries(sessionsByDate).map(([date,s])=>({date,sessions:s})).sort((a,b)=>a.date.localeCompare(b.date));
+
+  return { banner_summary, banner_position, position_summary, banner_trends, daily, pos_heatmap, months, fatigue, sessions, bannerDailyPos, positionShifts };
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  REBUILD DASHBOARD
+// ══════════════════════════════════════════════════════════════════
+function rebuildDashboard(){
+  document.getElementById('loading-overlay').classList.remove('hidden');
+  setTimeout(()=>{
+    try{
+      const eventRecords = parseEvents(rawEvents);
+      const sessionsByDate = parseSessions(rawSessions);
+      D = buildDataModel(eventRecords, sessionsByDate);
+      initDashboard();
+    } catch(e){
+      console.error(e);
+      alert('Error processing CSV: '+e.message);
+    }
+    document.getElementById('loading-overlay').classList.add('hidden');
+  }, 50);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  INIT DASHBOARD
+// ══════════════════════════════════════════════════════════════════
+function initDashboard(){
+  document.getElementById('dashboard').style.display='';
+  showLoadedSummary();
+  renderKPIs();
+  initBannerSelector();
+  initPositionFilter();
+  initDateRange();
+  renderAllBannersTable();
+  renderPositionAnalysis();
+  renderBannerTrend();
+}
+
+function renderKPIs(){
+  const totalClicks = D.banner_summary.reduce((s,b)=>s+b.total_clicks,0);
+  const totalSessions = D.daily.reduce((s,d)=>s+d.sessions,0);
+  const overallCTR = totalSessions>0 ? (totalClicks/totalSessions)*100 : 0;
+  const activeBanners = D.banner_summary.length;
+  const p1Summary = D.position_summary.find(p=>p.position===1);
+  const dateRange = D.daily.length>0 ? D.daily[0].date+' → '+D.daily[D.daily.length-1].date : '—';
+
+  const kpis = [
+    {label:'Total Clicks', value:fmtK(totalClicks), sub:dateRange, col:'var(--purple)'},
+    {label:'Total Sessions', value:fmtK(totalSessions), sub:'Homepage', col:'var(--blue)'},
+    {label:'Overall CTR', value:overallCTR.toFixed(2)+'%', sub:'Clicks / Sessions', col:'var(--green)'},
+    {label:'Active Banners', value:activeBanners, sub:D.banner_position.length+' banner×pos', col:'var(--amber)'},
+    {label:'P1 Avg CTR', value:p1Summary ? p1Summary.avg_ctr.toFixed(2)+'%':'—', sub:'Position 1', col:'var(--pos1)'},
+    {label:'Date Range', value:D.daily.length+'d', sub:dateRange, col:'var(--text2)'},
+  ];
+  document.getElementById('kpi-grid').innerHTML = kpis.map(k=>`
+    <div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value" style="color:${k.col};font-size:20px">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+}
+
+function initBannerSelector(){
+  const sel = document.getElementById('tr-banner-sel');
+  sel.innerHTML = '<option value="">— Select a banner —</option>';
+  D.banner_summary.forEach(b=>{
+    const opt = document.createElement('option');
+    opt.value = b.banner;
+    opt.textContent = capitalize(b.banner).substring(0,65)+' ['+b.total_clicks.toLocaleString()+' clicks]';
+    sel.appendChild(opt);
+  });
+  document.getElementById('tr-url-count').textContent = D.banner_summary.length+' banners';
+  // Auto-select first
+  if(D.banner_summary.length>0){ sel.selectedIndex=1; }
+}
+
+function initPositionFilter(){
+  const sel = document.getElementById('tr-pos-sel');
+  sel.innerHTML = '<option value="">All positions</option>';
+  const positions = [...new Set(D.banner_position.map(r=>r.position))].sort((a,b)=>a-b);
+  positions.forEach(p=>{
+    const opt = document.createElement('option');
+    opt.value = p; opt.textContent = 'Position '+p;
+    sel.appendChild(opt);
+  });
+}
+
+function initDateRange(){
+  if(!D.daily.length) return;
+  const allDates = D.daily.map(d=>d.date).sort();
+  const from = document.getElementById('tr-date-from');
+  const to   = document.getElementById('tr-date-to');
+  from.value = allDates[0]; to.value = allDates[allDates.length-1];
+  from.min = allDates[0]; from.max = allDates[allDates.length-1];
+  to.min   = allDates[0]; to.max   = allDates[allDates.length-1];
+  document.getElementById('tr-date-range').textContent = allDates[0]+' → '+allDates[allDates.length-1];
+}
+
+function clearTrendFilters(){
+  if(!D) return;
+  initDateRange();
+  document.getElementById('tr-pos-sel').value='';
+  renderBannerTrend();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ══════════════════════════════════════════════════════════════════
+function switchTab(tab){
+  ['chart','table','pos'].forEach(t=>{
+    document.getElementById('panel-'+t).style.display = t===tab?'':'none';
+    const btn = document.getElementById('tab-'+t+'-btn');
+    const isActive = t===tab;
+    btn.classList.toggle('active', isActive);
+    btn.style.borderBottomColor = isActive
+      ? (t==='chart'?'var(--purple)':t==='table'?'var(--blue)':'var(--amber)')
+      : 'transparent';
+    btn.style.color = isActive
+      ? (t==='chart'?'var(--purple)':t==='table'?'var(--blue)':'var(--amber)')
+      : 'var(--text2)';
+  });
+  if(tab==='table'){ renderBannerPositionTable(); renderAllBannersTable(); }
+  if(tab==='pos')  { renderPositionAnalysis(); }
+  if(tab==='chart'){ renderBannerTrend(); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TREND CHART
+// ══════════════════════════════════════════════════════════════════
+let trendChart = null;
+
+function renderBannerTrend(){
+  if(!D) return;
+  const banner    = document.getElementById('tr-banner-sel').value;
+  const posFilter = document.getElementById('tr-pos-sel').value;
+  const dateFrom  = document.getElementById('tr-date-from').value;
+  const dateTo    = document.getElementById('tr-date-to').value;
+
+  if(!banner){ if(trendChart){trendChart.destroy();trendChart=null;} return; }
+
+  const rawTrend = D.banner_trends[banner]||{};
+  const bannerMeta = D.banner_summary.find(b=>b.banner===banner);
+  const bpRows = D.banner_position.filter(r=>r.banner===banner);
+  const availablePositions = bpRows.map(r=>r.position).sort((a,b)=>a-b);
+
+  // Date-filtered dates where the banner was active
+  const allDates = Object.keys(rawTrend).sort().filter(d=>
+    (!dateFrom||d>=dateFrom)&&(!dateTo||d<=dateTo)
+  );
+  if(!allDates.length){ if(trendChart){trendChart.destroy();trendChart=null;} return; }
+
+  // bannerDailyPos for this banner
+  const dayPosMap = (D.bannerDailyPos && D.bannerDailyPos[banner])||{};
+  const shiftMap  = (D.positionShifts  && D.positionShifts[banner]) ||{};
+
+  // Position pills + shift badges
+  const posInfo = document.getElementById('tr-pos-info');
+  let pillsHtml = availablePositions.map(p=>{
+    const row = bpRows.find(r=>r.position===p);
+    const col=POS_COL[p-1], bg=POS_BG[p-1];
+    const isActive = posFilter===String(p);
+    return `<span style="padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;
+      background:${isActive?col+'33':bg};color:${col};border:1px solid ${col}${isActive?'99':'44'};cursor:pointer"
+      onclick="document.getElementById('tr-pos-sel').value='${p}';renderBannerTrend()">
+      P${p}: ${row?row.avg_ctr.toFixed(2)+'% avg':'-'} · ${row?row.days+'d':'-'}</span>`;
+  }).join('');
+  // Show shift summary badges for any shifts in the filtered date range
+  const shiftDatesInRange = Object.keys(shiftMap).filter(d=>(!dateFrom||d>=dateFrom)&&(!dateTo||d<=dateTo)).sort();
+  if(shiftDatesInRange.length>0){
+    pillsHtml += shiftDatesInRange.map(d=>{
+      const s = shiftMap[d];
+      const fromLabel = s.from.join('+');
+      return `<span style="padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;background:rgba(255,94,107,.12);color:#ff5e6b;border:1px solid rgba(255,94,107,.35)">↕ ${d.slice(5)} P${fromLabel}→P${s.to} (${s.totalClicks} clicks combined)</span>`;
+    }).join('');
+  }
+  posInfo.innerHTML = pillsHtml;
+
+  // CTRs per date
+  const ctrs = allDates.map(d=>{
+    if(!(d in rawTrend)) return null;
+    if(!posFilter) return rawTrend[d];
+    return dayPosMap[d]===Number(posFilter) ? rawTrend[d] : null;
+  });
+
+  // Reference lines
+  let bannerAvgVal=0, bannerAvgLabel='';
+  if(posFilter){
+    const pr = bpRows.find(r=>r.position===Number(posFilter));
+    if(pr){ bannerAvgVal=pr.avg_ctr; bannerAvgLabel=`Banner avg @ P${posFilter} (${bannerAvgVal.toFixed(2)}%)`; }
+  } else {
+    bannerAvgVal = bannerMeta?bannerMeta.avg_ctr:0;
+    bannerAvgLabel = `Banner overall avg (${bannerAvgVal.toFixed(2)}%)`;
+  }
+
+  let posAvgVal=0, posAvgLabel='';
+  if(posFilter){
+    const ps = D.position_summary.find(r=>r.position===Number(posFilter));
+    if(ps){ posAvgVal=ps.avg_ctr; posAvgLabel=`All banners @ P${posFilter} (${posAvgVal.toFixed(2)}%)`; }
+  } else {
+    // Weighted platform avg: total clicks / total sessions across all positions
+    const totC = D.position_summary.reduce((s,r)=>s+r.total_clicks,0);
+    const totS = D.position_summary.reduce((s,r)=>s+r.total_sessions,0);
+    posAvgVal = totS>0 ? (totC/totS)*100 : 0;
+    posAvgLabel = `Platform avg (${posAvgVal.toFixed(2)}%)`;
+  }
+
+  if(trendChart){trendChart.destroy();trendChart=null;}
+  const posCol = posFilter?POS_COL[Number(posFilter)-1]:'#a78bfa';
+  const posColA = posFilter?posCol+'22':'rgba(167,139,250,.1)';
+
+  // X labels
+  const MON_SHORT=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let lastMonth='';
+  const xLabels = allDates.map(d=>{
+    const [,mm,dd]=d.split('-'), key=d.slice(0,7);
+    if(key!==lastMonth){lastMonth=key; return MON_SHORT[parseInt(mm)]+' '+dd;}
+    return dd;
+  });
+
+  const pRadius = allDates.length>60?0:3;
+  const pointColors = allDates.map(d=> shiftMap[d] ? '#ff5e6b' : posCol);
+  const pointRadii  = allDates.map(d=> shiftMap[d] ? 6 : pRadius);
+  const datasets=[{
+    label: posFilter?`Daily CTR @ P${posFilter}`:'Daily CTR %',
+    data: ctrs, borderColor:posCol, backgroundColor:posColA, borderWidth:2,
+    pointRadius:pointRadii, pointHoverRadius:8,
+    pointBackgroundColor:pointColors, fill:true, tension:.25, spanGaps:false
+  }];
+  if(bannerAvgVal>0) datasets.push({
+    label:bannerAvgLabel, data:allDates.map(()=>+bannerAvgVal.toFixed(3)),
+    borderColor:'#f5c342', backgroundColor:'transparent', borderWidth:2,
+    borderDash:[8,4], pointRadius:0, fill:false, tension:0, spanGaps:true
+  });
+  if(posAvgVal>0) datasets.push({
+    label:posAvgLabel, data:allDates.map(()=>+posAvgVal.toFixed(3)),
+    borderColor:'#1fd89a', backgroundColor:'transparent', borderWidth:2,
+    borderDash:[3,5], pointRadius:0, fill:false, tension:0, spanGaps:true
+  });
+
+  trendChart = new Chart(document.getElementById('ch-banner-trend'),{
+    type:'line',
+    data:{ labels:xLabels, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true, labels:{color:'#8892a4',font:{size:11},boxWidth:18,padding:14}},
+        tooltip:{callbacks:{
+          title:ctx=>allDates[ctx[0].dataIndex],
+          label:c=>{
+            if(c.parsed.y===null) return '';
+            const date=allDates[c.dataIndex];
+            const shift=shiftMap[date];
+            let label=` ${c.parsed.y.toFixed(2)}% CTR`;
+            if(shift&&c.datasetIndex===0){
+              const fromLabel=shift.from.join('+');
+              label+=` ↕ shifted P${fromLabel}→P${shift.to} (${shift.totalClicks} clicks combined)`;
+            }
+            return label;
+          }
+        }}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:allDates.length>60?20:allDates.length,font:{size:11},color:'#6b7694',maxRotation:0,callback:(v,i)=>xLabels[i]}},
+        y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>v+'%',font:{size:11},color:'#6b7694'},min:0}
+      }
+    }
+  });
+  renderDailyTable(banner, posFilter, allDates, ctrs);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DAILY TABLE
+// ══════════════════════════════════════════════════════════════════
+function renderDailyTable(banner, posFilter, allDates, ctrs){
+  const wrap = document.getElementById('daily-table-wrap');
+  if(!banner||!allDates.length){wrap.style.display='none';return;}
+  wrap.style.display='';
+  document.getElementById('daily-table-badge').textContent = allDates.length+' days';
+  document.getElementById('daily-table-subtitle').textContent = posFilter?`Position ${posFilter} filter`:'All positions';
+  document.getElementById('daily-table-head').innerHTML=`
+    <th class="th">Date</th><th class="th">CTR %</th><th class="th">Position</th>
+    <th class="th">Est. Clicks</th><th class="th">Sessions</th>`;
+
+  const dailyLookup = {};
+  D.daily.forEach(d=>dailyLookup[d.date]=d);
+  const dayPosMap = (D.bannerDailyPos&&D.bannerDailyPos[banner])||{};
+  const shiftMap  = (D.positionShifts &&D.positionShifts[banner]) ||{};
+  const MON=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  document.getElementById('daily-table-body').innerHTML = allDates.map((date,i)=>{
+    const ctr=ctrs[i], dayData=dailyLookup[date], pos=dayPosMap[date];
+    const shift=shiftMap[date];
+    const posCol2 = pos?POS_COL[pos-1]:'var(--text3)';
+    const posBg2  = pos?POS_BG[pos-1]:'transparent';
+    const [y,m,d2]=date.split('-');
+    const dateLabel=`${MON[parseInt(m)]} ${parseInt(d2)}, ${y}`;
+    let estClicks='—', sessions='—';
+    if(dayData){
+      sessions=fmt(dayData.sessions);
+      if(ctr!==null&&ctr>0){
+        const rawClicks = Math.round(ctr/100*dayData.sessions);
+        if(rawClicks>=10) estClicks=fmt(rawClicks);
+      }
+    }
+    let posCell;
+    if(pos){
+      const fromLabel = shift ? shift.from.join('+') : null;
+      const shiftBadge = shift
+        ? `<span style="background:rgba(255,94,107,.12);color:#ff5e6b;padding:1px 6px;border-radius:6px;font-size:9px;font-weight:700;margin-left:4px" title="Clicks combined from P${fromLabel} and P${shift.to}. Total: ${shift.totalClicks}">↕ from P${fromLabel}</span>`
+        : '';
+      posCell = `<span style="background:${posBg2};color:${posCol2};padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">P${pos}</span>${shiftBadge}`;
+    } else {
+      posCell = '<span style="color:var(--text3)">—</span>';
+    }
+    return `<tr>
+      <td class="td" style="color:var(--text2)">${dateLabel}</td>
+      <td class="td td-num">${ctr===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${ctrCol(ctr)};font-weight:600">${ctr.toFixed(2)}%</span>`}</td>
+      <td class="td">${posCell}</td>
+      <td class="td td-num" style="font-family:'JetBrains Mono',monospace;font-size:11px">${estClicks}</td>
+      <td class="td td-num" style="color:var(--text3);font-size:11px">${sessions}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TABLE 1: Banner × Position breakdown
+// ══════════════════════════════════════════════════════════════════
+function renderBannerPositionTable(){
+  const banner = document.getElementById('tr-banner-sel').value;
+  const titleEl = document.getElementById('tbl1-title');
+  const badgeEl = document.getElementById('tbl1-badge');
+  const tbody = document.getElementById('tbl-banner-pos-body');
+  tbody.innerHTML='';
+  if(!banner){titleEl.textContent='Select a banner above';badgeEl.textContent='';return;}
+  const bpRows = D.banner_position.filter(r=>r.banner===banner).sort((a,b)=>a.position-b.position);
+  const totalClicks = bpRows.reduce((s,r)=>s+r.total_clicks,0);
+  titleEl.textContent = capitalize(banner).substring(0,70)+' — by Position';
+  badgeEl.textContent = bpRows.length+' positions';
+  bpRows.forEach(row=>{
+    const pCol=POS_COL[row.position-1], pBg=POS_BG[row.position-1];
+    const platRow=D.position_summary.find(r=>r.position===row.position);
+    const platAvg=platRow?platRow.avg_ctr:null;
+    const delta=platAvg!==null?row.avg_ctr-platAvg:null;
+    const deltaStr=delta!==null?(delta>=0?'+':'')+delta.toFixed(2)+'% vs platform':'—';
+    const deltaClass=delta===null?'vs-eq':delta>0.1?'vs-up':delta<-0.1?'vs-dn':'vs-eq';
+    const clicksPerDay=row.days>0?(row.total_clicks/row.days).toFixed(1):'—';
+    const share=totalClicks>0?((row.total_clicks/totalClicks)*100).toFixed(1)+'%':'—';
+    const maxCtr=Math.max(...bpRows.map(r=>r.avg_ctr));
+    const barW=maxCtr>0?Math.round((row.avg_ctr/maxCtr)*80):0;
+    tbody.innerHTML+=`<tr>
+      <td class="td"><span class="badge-pos" style="background:${pBg};color:${pCol}">P${row.position}</span></td>
+      <td class="td">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:${barW}px;height:6px;border-radius:3px;background:${pCol};opacity:.8;min-width:2px"></div>
+          <span style="color:${ctrCol(row.avg_ctr)};font-weight:600">${row.avg_ctr.toFixed(2)}%</span>
+        </div>
+      </td>
+      <td class="td"><span class="${deltaClass}" style="font-size:11px">${deltaStr}</span></td>
+      <td class="td td-num">${fmt(row.total_clicks)}</td>
+      <td class="td td-num">${row.days}d</td>
+      <td class="td td-num">${clicksPerDay}</td>
+      <td class="td td-num">
+        <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+          <div style="width:40px;height:4px;border-radius:2px;background:var(--bg5)">
+            <div style="width:${share};height:4px;border-radius:2px;background:${pCol}"></div>
+          </div>${share}
+        </div>
+      </td>
+    </tr>`;
+  });
+  if(!bpRows.length) tbody.innerHTML=`<tr><td class="td" colspan="7" style="color:var(--text3);text-align:center;padding:20px">No position data for this banner</td></tr>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TABLE 2: All Banners Summary (sortable)
+// ══════════════════════════════════════════════════════════════════
+let tbl2Sort={col:'total_clicks',dir:-1};
+function renderAllBannersTable(){
+  if(!D) return;
+  const search=(document.getElementById('tbl2-search').value||'').toLowerCase();
+  const cols=[
+    {key:'banner',label:'Banner',num:false},
+    {key:'avg_ctr',label:'Avg CTR',num:true},
+    {key:'peak_ctr',label:'Peak CTR',num:true},
+    {key:'total_clicks',label:'Total Clicks',num:true},
+    {key:'active_days',label:'Active Days',num:true},
+    {key:'avg_clicks_day',label:'Clicks/Day',num:true},
+    {key:'best_pos',label:'Best Pos',num:true},
+    {key:'positions',label:'Positions',num:false},
+    {key:'fatigue',label:'Trend',num:false},
+  ];
+  const headRow=document.getElementById('tbl2-head');
+  headRow.innerHTML=cols.map(c=>`<th class="th"><span class="sort-btn" onclick="sortTable2('${c.key}')" style="color:${tbl2Sort.col===c.key?'var(--text)':''}">
+    ${c.label} ${tbl2Sort.col===c.key?(tbl2Sort.dir>0?'↑':'↓'):''}</span></th>`).join('');
+
+  const fatigueMap={};
+  D.fatigue.forEach(f=>{ fatigueMap[f.banner]={fatigued:f.fatigued,trend_pct:f.trend_pct}; });
+
+  let rows=D.banner_summary.map(b=>({...b,fatigue:fatigueMap[b.banner]||null}));
+  if(search) rows=rows.filter(r=>r.banner.toLowerCase().includes(search)||capitalize(r.banner).toLowerCase().includes(search));
+  rows.sort((a,b)=>{
+    let av=a[tbl2Sort.col], bv=b[tbl2Sort.col];
+    if(tbl2Sort.col==='fatigue'){av=a.fatigue?.trend_pct??0;bv=b.fatigue?.trend_pct??0;}
+    if(typeof av==='string') return tbl2Sort.dir*(av.localeCompare(bv));
+    return tbl2Sort.dir*((av??0)-(bv??0));
+  });
+
+  document.getElementById('tbl2-badge').textContent=rows.length+' banners';
+  const selBanner=document.getElementById('tr-banner-sel').value;
+  const tbody=document.getElementById('tbl-all-banners-body');
+  tbody.innerHTML=rows.map(b=>{
+    const fat=b.fatigue;
+    const fatBadge=fat
+      ? fat.fatigued
+        ? `<span style="background:var(--red-d);color:var(--red);padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">⚠ Fatigued ${fat.trend_pct.toFixed(0)}%</span>`
+        : `<span style="background:var(--green-d);color:var(--green);padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">✓ ${fat.trend_pct>0?'+':''}${fat.trend_pct.toFixed(0)}%</span>`
+      : '<span style="color:var(--text3);font-size:10px">—</span>';
+    const posSpans=b.positions.map(p=>`<span style="color:${POS_COL[p-1]};font-size:10px;font-weight:700">P${p}</span>`).join(' ');
+    const name=capitalize(b.banner).substring(0,40);
+    const isSel=b.banner===selBanner;
+    const rowBg=isSel?'background:var(--bg4)':'';
+    return `<tr style="${rowBg};cursor:pointer" onclick="selectBanner('${b.banner}')">
+      <td class="td" style="overflow:hidden">
+        <div style="font-weight:${isSel?700:400};color:${isSel?'var(--purple)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${b.banner}">${name}</div>
+      </td>
+      <td class="td td-num"><span style="color:${ctrCol(b.avg_ctr)};font-weight:600">${b.avg_ctr.toFixed(2)}%</span></td>
+      <td class="td td-num" style="color:var(--text2)">${b.peak_ctr.toFixed(2)}%</td>
+      <td class="td td-num">${fmt(b.total_clicks)}</td>
+      <td class="td td-num">${b.active_days}d</td>
+      <td class="td td-num">${b.avg_clicks_day.toFixed(0)}</td>
+      <td class="td td-num"><span style="color:${POS_COL[b.best_pos-1]};font-weight:700">P${b.best_pos}</span></td>
+      <td class="td">${posSpans}</td>
+      <td class="td">${fatBadge}</td>
+    </tr>`;
+  }).join('');
+  if(!rows.length) tbody.innerHTML=`<tr><td class="td" colspan="9" style="color:var(--text3);text-align:center;padding:20px">No banners match</td></tr>`;
+}
+function sortTable2(col){ tbl2Sort.dir=tbl2Sort.col===col?-tbl2Sort.dir:-1; tbl2Sort.col=col; renderAllBannersTable(); }
+function selectBanner(banner){ document.getElementById('tr-banner-sel').value=banner; switchTab('chart'); renderBannerTrend(); renderBannerPositionTable(); }
+
+// ══════════════════════════════════════════════════════════════════
+//  POSITION ANALYSIS
+// ══════════════════════════════════════════════════════════════════
+function renderPositionAnalysis(){
+  if(!D) return;
+  document.getElementById('heatmap-badge').textContent = D.months.length+' months';
+
+  // Heatmap
+  const tbl = document.getElementById('heatmap-table');
+  const MON_SHORT=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const positions = [...new Set(D.banner_position.map(r=>r.position))].sort((a,b)=>a-b);
+  const allVals = positions.flatMap(p=>D.months.map(m=>(D.pos_heatmap[String(p)]||{})[m]||0)).filter(v=>v>0);
+  const maxVal = allVals.length?Math.max(...allVals):1;
+
+  let head='<tr><th style="padding:6px 12px;font-size:10px;font-weight:700;color:var(--text3);text-align:left">Position</th>';
+  D.months.forEach(m=>{
+    const [y,mm]=m.split('-');
+    head+=`<th style="padding:6px 8px;font-size:10px;font-weight:700;color:var(--text2);text-align:center">${MON_SHORT[parseInt(mm)]} ${y.slice(2)}</th>`;
+  });
+  head+='<th style="padding:6px 12px;font-size:10px;font-weight:700;color:var(--text2)">Avg</th></tr>';
+
+  const rows = positions.map(p=>{
+    const pCol=POS_COL[p-1];
+    const pData=D.pos_heatmap[String(p)]||{};
+    const vals=D.months.map(m=>pData[m]||0);
+    const avg=vals.filter(v=>v>0).reduce((a,b)=>a+b,0)/(vals.filter(v=>v>0).length||1);
+    let row=`<tr><td style="padding:6px 12px;font-size:11px;font-weight:700;color:${pCol}">P${p}</td>`;
+    D.months.forEach((m,i)=>{
+      const v=vals[i];
+      const intensity=maxVal>0?v/maxVal:0;
+      const bg=v>0?`rgba(${hexToRgb(pCol)},${(0.1+intensity*0.7).toFixed(2)})`:'transparent';
+      row+=`<td class="heatmap-cell" style="background:${bg};color:${v>0?pCol:'var(--text3)'}">${v>0?v.toFixed(1)+'%':'—'}</td>`;
+    });
+    row+=`<td style="padding:6px 12px;font-size:11px;font-weight:700;color:${pCol};text-align:center">${avg.toFixed(1)}%</td></tr>`;
+    return row;
+  }).join('');
+
+  tbl.innerHTML = head+rows;
+
+  // Position summary table
+  const ps=document.getElementById('pos-summary-body');
+  ps.innerHTML=D.position_summary.map(p=>{
+    const col=POS_COL[p.position-1], bg=POS_BG[p.position-1];
+    return `<tr>
+      <td class="td"><span class="badge-pos" style="background:${bg};color:${col}">P${p.position}</span></td>
+      <td class="td td-num">${fmt(p.total_clicks)}</td>
+      <td class="td td-num">
+        <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+          <div style="width:60px;height:4px;border-radius:2px;background:var(--bg5)">
+            <div style="width:${p.share_pct}%;height:4px;border-radius:2px;background:${col}"></div>
+          </div>${p.share_pct.toFixed(1)}%
+        </div>
+      </td>
+      <td class="td td-num"><span style="color:${ctrCol(p.avg_ctr)};font-weight:600">${p.avg_ctr.toFixed(2)}%</span></td>
+      <td class="td td-num">${p.peak_ctr.toFixed(2)}%</td>
+      <td class="td td-num">${p.banner_count}</td>
+      <td class="td td-num">${p.avg_clicks.toFixed(0)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function hexToRgb(hex){
+  hex=hex.replace('#','');
+  if(hex.length===3) hex=hex.split('').map(c=>c+c).join('');
+  const n=parseInt(hex,16);
+  return `${(n>>16)&255},${(n>>8)&255},${n&255}`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  EXPORT TABLE CSV
+// ══════════════════════════════════════════════════════════════════
+function exportTableCSV(){
+  if(!D) return;
+  const rows = [['Banner','Avg CTR %','Peak CTR %','Total Clicks','Active Days','Clicks/Day','Best Position','Positions','Fatigue Trend %']];
+  D.banner_summary.forEach(b=>{
+    const fat = D.fatigue.find(f=>f.banner===b.banner);
+    rows.push([
+      b.banner, b.avg_ctr, b.peak_ctr, b.total_clicks, b.active_days,
+      b.avg_clicks_day.toFixed(1), b.best_pos, b.positions.join(';'),
+      fat?fat.trend_pct.toFixed(1):''
+    ]);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='banner_summary_export.csv'; a.click();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ══════════════════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') clearTrendFilters();
+});
+
+// ── Auto-load from last session on page open ──
+window.addEventListener('DOMContentLoaded', ()=>{
+  loadFromStorage();
+});
+</script>
+</body>
+</html>
